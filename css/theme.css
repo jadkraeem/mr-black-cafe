@@ -30,6 +30,36 @@
   color-scheme: dark;
 }
 
+/* ---------- الوضع النهاري (ألوان فاتحة) ---------- */
+:root[data-theme="light"] {
+  --bg: #f7f3ec;
+  --bg-2: #efe8dc;
+  --card: #ffffff;
+  --card-2: #f5efe4;
+  --line: #e4dac9;
+  --text: #1f1b16;
+  --muted: #7b6f5f;
+  --gold: #b8901f;
+  --gold-2: #9c7914;
+  --gold-soft: rgba(184, 144, 31, .12);
+  --on-gold: #ffffff;
+  --danger: #c0392b;
+  --danger-soft: rgba(192, 57, 43, .1);
+  --warn: #c98a06;
+  --warn-soft: rgba(201, 138, 6, .12);
+  --ok: #2e8b57;
+  --ok-soft: rgba(46, 139, 87, .12);
+  --shadow: 0 10px 30px rgba(60, 45, 20, .12);
+  color-scheme: light;
+}
+:root[data-theme="light"] .badge-ok { color: #1f6b41; }
+:root[data-theme="light"] .badge-warn { color: #8a5d00; }
+:root[data-theme="light"] .badge-danger, :root[data-theme="light"] .btn-danger, :root[data-theme="light"] .form-error { color: #b03a2e; }
+:root[data-theme="light"] .badge-gold { color: #8a6a10; }
+html { transition: background-color .3s; }
+body, .card, .btn, .input, .modal, .topbar, .sidebar { transition: background-color .3s, color .3s, border-color .3s; }
+.theme-btn { width: 40px; min-height: 38px; padding: 0; font-size: 17px; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
 body {

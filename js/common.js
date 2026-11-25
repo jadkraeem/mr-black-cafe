@@ -350,3 +350,31 @@ export function staffGate({ root, allowed, title, onReady }) {
 }
 
 export const signOut = () => sb.auth.signOut();
+
+// ---------------------------------------------------------
+// الوضع النهاري / الليلي
+// ---------------------------------------------------------
+export const currentTheme = () => document.documentElement.getAttribute('data-theme') || 'dark';
+const themeIcon = (t) => (t === 'light' ? '🌙' : '☀️');
+const themeTitle = (t) => (t === 'light' ? 'الوضع الليلي' : 'الوضع النهاري');
+
+export function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('mrblack-theme', JSON.stringify({ t, day: new Date().toDateString() })); } catch { /* ignore */ }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'light' ? '#f7f3ec' : '#0f0f10');
+  document.querySelectorAll('[data-theme-btn]').forEach((b) => {
+    b.textContent = themeIcon(t);
+    b.title = themeTitle(t);
+    b.setAttribute('aria-label', themeTitle(t));
+  });
+}
+
+export function themeButtonTpl(extraClass = 'btn btn-sm') {
+  const t = currentTheme();
+  return html`<button class="${extraClass} theme-btn" data-theme-btn type="button" title="${themeTitle(t)}" aria-label="${themeTitle(t)}">${themeIcon(t)}</button>`;
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-theme-btn]')) setTheme(currentTheme() === 'light' ? 'dark' : 'light');
+});
+document.querySelector('meta[name="theme-color"]')?.setAttribute('content', currentTheme() === 'light' ? '#f7f3ec' : '#0f0f10');

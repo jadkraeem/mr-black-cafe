@@ -12,7 +12,6 @@ const params = new URLSearchParams(location.search);
 const tableParam = params.get('table') ?? '';
 const TABLE = /^[0-9]{1,3}$/.test(tableParam) ? Number(tableParam) : null;
 const CART_KEY = `mrblack-cart-${TABLE}`;
-const INVOICES_KEY = `mrblack-invoices-${TABLE}`;
 const MAX_NOTE = 200;
 
 const state = {
@@ -183,12 +182,16 @@ function showEvents() {
     : html`<div class="state"><h3>لا توجد فعاليات حالياً</h3><p>ترقّبوا الجديد!</p></div>`);
 }
 
+let lastCount = 0;
 function renderCartBar() {
   const n = cartCount();
-  $('#cart-bar').classList.toggle('hidden', n === 0);
-  $('#cart-count').textContent = n;
   $('#cart-count-top').textContent = n;
-  $('#cart-total').textContent = n ? `≈ ${money(estimateTotal())}` : '';
+  $('#cart-total-top').textContent = n ? money(estimateTotal()) : '';
+  if (n > lastCount) {
+    const b = $('#cart-btn-top');
+    b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
+  }
+  lastCount = n;
 }
 
 // ---------- السلة ----------
@@ -309,7 +312,6 @@ async function sendOrder(btn) {
       const ids = new Set(state.cart.map((l) => l.item_id));
       state.cart = [];
       saveCart();
-      storeInvoice(data);
       cartModal?.close();
       ids.forEach(updateButton);
       showInvoice(data, true);
@@ -320,15 +322,6 @@ async function sendOrder(btn) {
 }
 
 // ---------- الفاتورة ----------
-function storeInvoice(inv) {
-  const list = getInvoices();
-  list.unshift(inv);
-  sessionStorage.setItem(INVOICES_KEY, JSON.stringify(list.slice(0, 10)));
-  $('#my-orders-btn').classList.remove('hidden');
-}
-function getInvoices() {
-  try { return JSON.parse(sessionStorage.getItem(INVOICES_KEY) || '[]'); } catch { return []; }
-}
 
 function invoiceTpl(inv, fresh) {
   return html`<div class="invoice">
@@ -353,17 +346,6 @@ function showInvoice(inv, fresh = false) {
     <button class="btn btn-gold" data-close type="button" style="width:100%;margin-top:12px">${fresh ? 'متابعة التصفح' : 'إغلاق'}</button>`);
 }
 
-function showInvoicesList() {
-  const list = getInvoices();
-  if (!list.length) return;
-  const m = openModal('فواتيري', html`${list.map((inv, i) => html`
-    <button class="btn" data-i="${i}" type="button" style="width:100%;justify-content:space-between;margin-bottom:8px">
-      <span>فاتورة #${inv.order_id}</span><span class="num">${money(inv.total)}</span></button>`)}`);
-  m.body.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-i]');
-    if (b) { m.close(); showInvoice(list[Number(b.dataset.i)]); }
-  });
-}
 
 // ---------- التشغيل ----------
 function fillCafeInfo(ctx) {
@@ -389,9 +371,9 @@ async function load() {
 
     const [catRes, itemRes, offRes, evRes] = await Promise.all([
       sb.from('categories').select('id, name, sort').order('sort').order('id'),
-      sb.from('menu_items').select('id, category_id, name, name_en, description, price, image_url, sort, sold_out'),
-      sb.from('offers').select('id, title, description, discount_type, discount_value, item_id, category_id, ends_at'),
-      sb.from('events').select('id, title, description, starts_at, ends_at').order('starts_at', { ascending: true, nullsFirst: true }),
+      sb.from('menu_items').select('id, category_id, name, name_en, description, price, image_url, sort, sold_out').order('id'),
+      sb.from('offers').select('id, title, description, discount_type, discount_value, item_id, category_id, ends_at').order('id'),
+      sb.from('events').select('id, title, description, starts_at, ends_at').order('starts_at', { ascending: true, nullsFirst: true }).order('id'),
     ]);
     for (const r of [catRes, itemRes, offRes, evRes]) if (r.error) throw r.error;
 
@@ -415,7 +397,6 @@ async function load() {
     state.cart = state.cart.filter((l) => state.items.has(l.item_id) && !state.items.get(l.item_id).sold_out);
     if (state.cart.length < before) toast('تمت إزالة أصناف نفدت من سلتك.', 'error');
     saveCart();
-    if (getInvoices().length) $('#my-orders-btn').classList.remove('hidden');
 
     renderMenu();
     if (TABLE === null) renderStaffLinks();
@@ -456,13 +437,77 @@ $('#chips').addEventListener('click', (e) => {
   renderMenu();
   if (TABLE === null) renderStaffLinks();
 });
-$('#cart-btn').addEventListener('click', openCart);
 $('#cart-btn-top').addEventListener('click', openCart);
-$('#my-orders-btn').addEventListener('click', showInvoicesList);
 $('#offers-box').addEventListener('click', showOffers);
 $('#events-box').addEventListener('click', showEvents);
 $('#denied-retry').addEventListener('click', load);
 window.addEventListener('online', () => toast('عاد الاتصال بالإنترنت.', 'success'));
 window.addEventListener('offline', () => toast('انقطع الاتصال بالإنترنت.', 'error'));
+
+// ---------- التحديث الفوري الصامت ----------
+// قاعدة البيانات ترسل إشارة "changed" عند أي تعديل في المنيو/العروض/الفعاليات/الإعدادات،
+// فنعيد جلب البيانات بهدوء ونحدّث فقط ما تغيّر، دون تحريك الصفحة أو إغلاق السلة.
+let refreshTimer = null;
+let refreshing = false;
+const sig = (v) => JSON.stringify(v);
+
+async function silentRefresh() {
+  if (refreshing || !state.ctx) return;
+  refreshing = true;
+  try {
+    const ctxRes = await sb.rpc('menu_context', { p_table: TABLE ?? 0 });
+    if (ctxRes.error) return;
+    const ctx = ctxRes.data;
+    if (!ctx.network_ok) { $('#denied').classList.remove('hidden'); state.ctx = ctx; return; }
+    const wasDenied = !$('#denied').classList.contains('hidden');
+    if (wasDenied) { $('#denied').classList.add('hidden'); refreshing = false; return load(); }
+
+    const [catRes, itemRes, offRes, evRes] = await Promise.all([
+      sb.from('categories').select('id, name, sort').order('sort').order('id'),
+      sb.from('menu_items').select('id, category_id, name, name_en, description, price, image_url, sort, sold_out').order('id'),
+      sb.from('offers').select('id, title, description, discount_type, discount_value, item_id, category_id, ends_at').order('id'),
+      sb.from('events').select('id, title, description, starts_at, ends_at').order('starts_at', { ascending: true, nullsFirst: true }).order('id'),
+    ]);
+    if ([catRes, itemRes, offRes, evRes].some((r) => r.error)) return;
+
+    const ctxChanged = sig(ctx) !== sig(state.ctx);
+    const menuChanged = sig(catRes.data) !== sig(state.categories)
+      || sig(itemRes.data) !== sig([...state.items.values()])
+      || sig(offRes.data) !== sig(state.offers);
+    const newsChanged = sig(offRes.data) !== sig(state.offers) || sig(evRes.data) !== sig(state.events);
+
+    if (ctxChanged) { state.ctx = ctx; fillCafeInfo(ctx); }
+    if (newsChanged) { state.offers = offRes.data; state.events = evRes.data; renderNews(); }
+    if (menuChanged) {
+      state.categories = catRes.data;
+      state.items = new Map(itemRes.data.map((i) => [i.id, i]));
+      state.offers = offRes.data;
+      // أزل من السلة ما نفد أو حُذف
+      const removed = state.cart.filter((l) => !state.items.has(l.item_id) || state.items.get(l.item_id).sold_out);
+      if (removed.length) {
+        state.cart = state.cart.filter((l) => !removed.includes(l));
+        toast('بعض الأصناف في سلتك نفدت للتو وأُزيلت.', 'error');
+      }
+      saveCart();
+      const y = window.scrollY;
+      renderMenu();
+      if (TABLE === null) renderStaffLinks();
+      window.scrollTo({ top: y });
+      if (cartModal) { renderCartBody(); refreshQuoteSoon(); }
+    } else if (ctxChanged) {
+      saveCart();
+      if (cartModal) refreshQuoteSoon();
+    }
+  } finally {
+    refreshing = false;
+  }
+}
+const scheduleRefresh = () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(silentRefresh, 400); };
+
+sb.channel('menu-updates')
+  .on('broadcast', { event: 'changed' }, scheduleRefresh)
+  .subscribe((status) => { if (status === 'SUBSCRIBED') scheduleRefresh(); });
+setInterval(scheduleRefresh, 60000);                     // احتياط
+document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRefresh(); });
 
 load().catch(toastError);

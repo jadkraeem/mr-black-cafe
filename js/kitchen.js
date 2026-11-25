@@ -3,9 +3,9 @@
 // =========================================================
 import {
   sb, html, setHTML, $, staffGate, signOut, elapsed, minutesSince, fmtTime,
-  unlockAudio, audioReady, beep, toast, toastError, withBusy, ROLE_LABELS,
+  unlockAudio, audioReady, beep, toast, toastError, withBusy, ROLE_LABELS, themeButtonTpl,
 } from './common.js';
-import { startOrdersFeed, changeStatus } from './orders-feed.js';
+import { startOrdersFeed, changeStatus, orderPlace } from './orders-feed.js';
 import { mountAssistant } from './assistant.js';
 
 const root = $('#app');
@@ -27,7 +27,7 @@ function orderCard(o, col) {
   return html`
     <article class="order ${cls} ${freshIds.has(o.id) ? 'is-new' : ''}" data-id="${o.id}">
       <div class="order-head">
-        <b>طاولة ${o.table_number}</b>
+        <b>${orderPlace(o)}</b>
         <span class="muted num" style="font-size:13px">#${o.id} · ${fmtTime(o.created_at)}</span>
         <span class="timer" data-since="${done ? '' : o.created_at}">${done ? '✓' : elapsed(o.created_at)}</span>
       </div>
@@ -73,6 +73,7 @@ function renderShell(profile) {
       <span class="brand">Mr Black<small>COFFEE & LOUNGE</small></span><b>المطبخ</b>
       <span class="conn" id="conn" title="الاتصال اللحظي"></span>
       <span class="spacer"></span>
+      ${themeButtonTpl()}
       <button class="btn btn-sm" id="sound-btn" type="button">🔔 تفعيل الصوت</button>
       ${profile.role !== 'kitchen' ? html`<a class="btn btn-sm" href="casher.html">لوحة الكاشير</a>` : ''}
       <span class="user-chip">${profile.full_name} · ${ROLE_LABELS[profile.role]}</span>
@@ -116,13 +117,13 @@ staffGate({
     if (s?.late_minutes) lateMinutes = s.late_minutes;
 
     feed = startOrdersFeed({
-      statuses: ['new', 'preparing', 'ready'],
+      mode: 'kitchen',
       onChange: (list, { newIds }) => {
         orders = list;
         newIds.forEach((id) => freshIds.add(id));
         if (newIds.length) {
           beep(3);
-          toast(newIds.length > 1 ? `${newIds.length} طلبات جديدة` : `طلب جديد — طاولة ${list.find((o) => o.id === newIds[0])?.table_number ?? ''}`);
+          toast(newIds.length > 1 ? `${newIds.length} طلبات جديدة` : `طلب جديد — ${orderPlace(list.find((o) => o.id === newIds[0]) || {})}`);
           if (!audioReady()) toast('فعّل الصوت من الزر أعلى الشاشة لسماع التنبيهات.', 'error');
           setTimeout(() => newIds.forEach((id) => freshIds.delete(id)), 6000);
         }

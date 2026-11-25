@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap">
+  <script src="js/theme-init.js"></script>
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/menu.css">
 </head>
@@ -34,8 +35,8 @@
     </nav>
     <div class="m-actions">
       <span class="table-pill hidden" id="table-label"></span>
-      <button class="m-cart-btn" id="cart-btn-top" type="button" aria-label="السلة">🛒 <span id="cart-count-top" class="num">0</span></button>
-      <button class="m-cart-btn hidden" id="my-orders-btn" type="button">فواتيري</button>
+      <button class="m-cart-btn m-theme" data-theme-btn type="button" aria-label="تبديل الوضع">☀️</button>
+      <button class="m-cart-btn" id="cart-btn-top" type="button" aria-label="السلة">🛒 <span id="cart-count-top" class="num">0</span><span id="cart-total-top" class="num cart-total-top"></span></button>
     </div>
   </header>
 
@@ -92,12 +93,6 @@
     <p class="f-copy">© Mr Black</p>
   </footer>
 
-  <div class="cart-bar hidden" id="cart-bar">
-    <button class="btn btn-gold cart-btn" id="cart-btn" type="button">
-      <span>🛒 عرض السلة (<span id="cart-count" class="num">0</span>)</span>
-      <span id="cart-total" class="num"></span>
-    </button>
-  </div>
 
   <script src="vendor/supabase.js"></script>
   <script type="module" src="js/menu.js"></script>
