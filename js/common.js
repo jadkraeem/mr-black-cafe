@@ -319,13 +319,18 @@ function renderBlocked(root, title, message, extra = '') {
  */
 export function staffGate({ root, allowed, title, onReady }) {
   let started = false;
+  let checking = false;   // يمنع تشغيل اللوحة مرتين عند وصول INITIAL_SESSION و SIGNED_IN معاً
   const check = async (session) => {
     if (!session) {
       if (started) { location.reload(); return; }
-      renderLogin(root, title);
+      if (!checking) renderLogin(root, title);
       return;
     }
-    if (started) return;
+    if (started || checking) return;
+    checking = true;
+    try { await checkProfile(session); } finally { checking = false; }
+  };
+  const checkProfile = async (session) => {
     setHTML(root, html`<div class="login-screen"><div class="state"><div class="spinner"></div>جارٍ التحقق من الحساب…</div></div>`);
     const { data: profile, error } = await sb.from('profiles')
       .select('id, full_name, role, active').eq('id', session.user.id).maybeSingle();

@@ -46,7 +46,7 @@ export function startOrdersFeed({ mode = 'till', onChange, onConn, onError }) {
     emit(isNew ? [id] : []);
   }
 
-  const channel = sb.channel(`orders-feed-${mode}`)
+  const channel = sb.channel(`orders-feed-${mode}-${Math.random().toString(36).slice(2, 8)}`)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (p) => fetchOne(p.new.id))
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (p) => {
       const cur = orders.get(p.new.id);

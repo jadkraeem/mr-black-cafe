@@ -154,3 +154,10 @@
 .pay-change.bad { background: var(--danger-soft); color: var(--danger); }
 .badge-paid { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
 .badge-unpaid { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+
+/* إصلاحات العرض */
+.main-area > .page { width: 100%; }
+.order.late .order-head .badge, .order.late .order-head .muted { background: #fff; color: var(--danger); border-color: #fff; }
+.ai-fab { inset-inline-start: auto; inset-inline-end: 18px; }
+.ai-panel { inset-inline-start: auto; inset-inline-end: 18px; }
+@media (max-width: 560px) { .ai-panel { inset-inline: 8px; } }
