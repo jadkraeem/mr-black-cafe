@@ -29,7 +29,7 @@ export function mount(el) {
 
   const target = (o) => o.item_id ? `الصنف: ${items.find((x) => x.id === o.item_id)?.name ?? '—'}`
     : o.category_id ? `القسم: ${cats.find((x) => x.id === o.category_id)?.name ?? '—'}` : 'كل المنيو';
-  const value = (o) => o.discount_type === 'percent' ? `${Number(o.discount_value)}%` : money(o.discount_value);
+  const value = (o) => o.discount_type === 'none' ? 'بدون خصم' : o.discount_type === 'percent' ? `${Number(o.discount_value)}%` : money(o.discount_value);
   function liveBadge(o) {
     const now = Date.now();
     if (!o.active) return html`<span class="badge">موقوف</span>`;
@@ -41,7 +41,7 @@ export function mount(el) {
   function render() {
     setHTML(el, html`
       <div class="page-head"><h2>العروض</h2><button class="btn btn-gold" data-add type="button">+ عرض</button></div>
-      <p class="muted" style="margin-bottom:12px">إذا انطبق أكثر من عرض على صنف، يُطبَّق الخصم الأكبر فقط. الخصم يُحسب على السيرفر.</p>
+      <p class="muted" style="margin-bottom:12px">العروض الفعّالة تظهر للزبائن في صندوق "عروض Mr Black" بصفحة المنيو. إذا انطبق أكثر من خصم على صنف يُطبَّق الأكبر فقط، والخصم يُحسب على السيرفر. نوع "إعلان بدون خصم" يظهر للزبائن فقط ولا يغيّر الأسعار.</p>
       ${offers.length ? html`<div class="table-wrap"><table class="data">
         <thead><tr><th>العرض</th><th>الخصم</th><th>يُطبَّق على</th><th>الفترة</th><th>الحالة</th><th>تفعيل</th><th></th></tr></thead>
         <tbody>${offers.map((o) => html`<tr data-id="${o.id}">
@@ -67,8 +67,9 @@ export function mount(el) {
           <div class="field"><label for="of-type">نوع الخصم</label>
             <select class="input" id="of-type" name="discount_type">
               <option value="percent" ${o?.discount_type !== 'fixed' ? html`selected` : ''}>نسبة %</option>
-              <option value="fixed" ${o?.discount_type === 'fixed' ? html`selected` : ''}>مبلغ ثابت</option></select></div>
-          <div class="field"><label for="of-val">القيمة</label>
+              <option value="fixed" ${o?.discount_type === 'fixed' ? html`selected` : ''}>مبلغ ثابت</option>
+              <option value="none" ${o?.discount_type === 'none' ? html`selected` : ''}>إعلان بدون خصم</option></select></div>
+          <div class="field ${o?.discount_type === 'none' ? 'hidden' : ''}" data-val><label for="of-val">القيمة</label>
             <input class="input" id="of-val" name="discount_value" type="number" min="1" step="1" required value="${o ? Number(o.discount_value) : ''}"></div>
         </div>
         <div class="field"><label for="of-scope">يُطبَّق على</label>
@@ -92,13 +93,14 @@ export function mount(el) {
       </form>`);
     const f = $('form', m.body);
     const err = $('.form-error', f);
+    $('#of-type', f).addEventListener('change', (e) => { $('[data-val]', f).classList.toggle('hidden', e.target.value === 'none'); });
     $('#of-scope', f).addEventListener('change', (e) => {
       f.querySelectorAll('[data-for]').forEach((d) => d.classList.toggle('hidden', d.dataset.for !== e.target.value));
     });
     f.addEventListener('submit', async (e) => {
       e.preventDefault();
       const d = formData(f);
-      const val = Number(d.discount_value);
+      const val = d.discount_type === 'none' ? 1 : Number(d.discount_value);
       const row = {
         title: (d.title || '').trim(),
         description: (d.description || '').trim() || null,

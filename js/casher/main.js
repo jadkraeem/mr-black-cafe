@@ -17,6 +17,7 @@ import * as stocktakeTab from './stocktake.js';
 import * as staffTab from './staff.js';
 import * as settingsTab from './settings.js';
 import * as wifiTab from './wifi.js';
+import * as eventsTab from './events.js';
 
 const TABS = [
   { key: 'orders', label: 'الطلبات', mod: ordersTab, roles: ['manager', 'cashier'] },
@@ -24,6 +25,7 @@ const TABS = [
   { key: 'inventory', label: 'المخزون', mod: inventoryTab, roles: ['manager'] },
   { key: 'tables', label: 'الطاولات و QR', mod: tablesTab, roles: ['manager'] },
   { key: 'offers', label: 'العروض', mod: offersTab, roles: ['manager'] },
+  { key: 'events', label: 'الفعاليات', mod: eventsTab, roles: ['manager', 'cashier'] },
   { key: 'reports', label: 'التقارير', mod: reportsTab, roles: ['manager'] },
   { key: 'stocktake', label: 'الجرد', mod: stocktakeTab, roles: ['manager'] },
   { key: 'wifi', label: 'الشبكة', mod: wifiTab, roles: ['manager', 'cashier'] },
@@ -36,7 +38,7 @@ const root = $('#app');
 staffGate({
   root,
   allowed: ['manager', 'cashier'],
-  title: 'لوحة الكاشير والإدارة — سجّل الدخول',
+  title: 'تسجيل دخول الإدارة',
   onReady: async (profile) => {
     const ctx = {
       profile,
@@ -58,7 +60,7 @@ staffGate({
     setHTML(root, html`
       <header class="topbar no-print">
         <div class="topbar-in">
-          <span class="brand">Mr Black</span>
+          <span class="brand">Mr Black<small>COFFEE & LOUNGE</small></span>
           <span class="conn" id="conn" title="الاتصال اللحظي بالطلبات"></span>
           <span class="spacer"></span>
           <button class="btn btn-sm" id="sound-btn" type="button">🔔 تفعيل الصوت</button>

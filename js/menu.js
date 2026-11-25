@@ -20,6 +20,8 @@ const state = {
   categories: [],
   items: new Map(),     // id -> item
   offers: [],
+  events: [],
+  filter: 'all',
   cart: [],             // [{key, item_id, qty, note}]
   sending: false,
 };
@@ -28,7 +30,8 @@ const state = {
 function loadCart() {
   try {
     const c = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
-    state.cart = Array.isArray(c) ? c.filter((l) => Number.isInteger(l.item_id) && Number.isInteger(l.qty)) : [];
+    state.cart = Array.isArray(c) ? c.filter((l) => Number.isInteger(l.item_id) && Number.isInteger(l.qty) && l.qty > 0)
+      .map((l) => ({ key: String(l.key || newKey()), item_id: l.item_id, qty: Math.min(l.qty, 50), note: String(l.note || '').slice(0, MAX_NOTE) })) : [];
   } catch { state.cart = []; }
 }
 function saveCart() {
@@ -43,6 +46,7 @@ const qtyOfItem = (id) => state.cart.filter((l) => l.item_id === id).reduce((s, 
 function unitDiscount(item) {
   let best = 0;
   for (const o of state.offers) {
+    if (o.discount_type === 'none') continue;
     const applies = o.item_id === item.id || o.category_id === item.category_id || (o.item_id == null && o.category_id == null);
     if (!applies) continue;
     const d = o.discount_type === 'percent'
@@ -64,103 +68,126 @@ function estimateTotal() {
 }
 
 function addItem(id) {
-  const line = state.cart.find((l) => l.item_id === id && !l.note);
+  const it = state.items.get(id);
+  if (!it || it.sold_out) { toast('هذا الصنف نفد حالياً.', 'error'); return; }
   if (qtyOfItem(id) >= 50) { toast('الحد الأقصى 50 من الصنف الواحد.', 'error'); return; }
+  const line = state.cart.find((l) => l.item_id === id && !l.note);
   if (line) line.qty += 1; else state.cart.push({ key: newKey(), item_id: id, qty: 1, note: '' });
   saveCart();
-  updateStepper(id);
+  updateButton(id);
+  if (qtyOfItem(id) === 1) toast(`تمت إضافة ${it.name} للسلة ✓`);
 }
 function removeOne(id) {
-  // ننقص من آخر سطر لهذا الصنف
   const lines = state.cart.filter((l) => l.item_id === id);
   const line = lines.find((l) => !l.note) || lines[lines.length - 1];
   if (!line) return;
   line.qty -= 1;
   if (line.qty <= 0) state.cart = state.cart.filter((l) => l !== line);
   saveCart();
-  updateStepper(id);
+  updateButton(id);
 }
 
 // ---------- العرض ----------
-function stepperTpl(id) {
-  const q = qtyOfItem(id);
-  if (!q) return html`<button class="btn btn-gold btn-icon" data-add="${id}" aria-label="إضافة">+</button>`;
+function buttonTpl(it) {
+  if (it.sold_out) return html`<button class="add-btn sold" type="button" disabled>نفد حالياً ✕</button>`;
+  const q = qtyOfItem(it.id);
+  if (!q) return html`<button class="add-btn" data-add="${it.id}" type="button">+ أضف للسلة</button>`;
   return html`<div class="stepper">
-    <button class="btn" data-dec="${id}" aria-label="إنقاص">−</button>
+    <button class="btn" data-dec="${it.id}" type="button" aria-label="إنقاص">−</button>
     <span class="qty num">${q}</span>
-    <button class="btn btn-gold" data-add="${id}" aria-label="إضافة">+</button></div>`;
+    <button class="btn btn-gold" data-add="${it.id}" type="button" aria-label="إضافة">+</button></div>`;
 }
-function updateStepper(id) {
-  const box = app.querySelector(`[data-stepper="${id}"]`);
-  if (box) setHTML(box, stepperTpl(id));
+function updateButton(id) {
+  const box = app.querySelector(`[data-btn="${id}"]`);
+  const it = state.items.get(id);
+  if (box && it) setHTML(box, buttonTpl(it));
 }
 
-function itemTpl(it) {
-  const disc = unitDiscount(it);
+function productTpl(it) {
+  const disc = it.sold_out ? 0 : unitDiscount(it);
   const img = safeUrl(it.image_url);
   return html`
-    <article class="item">
-      ${img
-        ? html`<img class="item-img" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer">`
-        : html`<div class="item-img item-ph" aria-hidden="true">${it.name.trim().charAt(0)}</div>`}
-      <div class="item-info">
-        <b>${it.name}</b>
-        ${it.description ? html`<p>${it.description}</p>` : ''}
+    <article class="product ${it.sold_out ? 'is-sold' : ''}">
+      ${img ? html`<img class="product-img" src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}
+      <div class="product-info">
+        <h3>${it.name}</h3>
+        ${it.name_en ? html`<p class="en">${it.name_en}</p>` : ''}
+        ${it.description ? html`<p class="desc">${it.description}</p>` : ''}
         <div class="price num">${money(it.price - disc)}${disc ? html`<s>${money(it.price)}</s>` : ''}</div>
+        <div data-btn="${it.id}">${buttonTpl(it)}</div>
       </div>
-      <div data-stepper="${it.id}">${stepperTpl(it.id)}</div>
     </article>`;
+}
+
+function renderChips(cats) {
+  setHTML($('#chips'), html`
+    <button class="category ${state.filter === 'all' ? 'on' : ''}" data-cat="all" type="button">كل الأصناف</button>
+    ${cats.map((c) => html`<button class="category ${String(state.filter) === String(c.id) ? 'on' : ''}" data-cat="${c.id}" type="button">${c.name}</button>`)}`);
 }
 
 function renderMenu() {
   const byCat = new Map(state.categories.map((c) => [c.id, []]));
   for (const it of state.items.values()) byCat.get(it.category_id)?.push(it);
   const cats = state.categories.filter((c) => byCat.get(c.id).length);
+  const sortItems = (list) => list.sort((a, b) => a.sort - b.sort || a.id - b.id);
 
   if (!cats.length) {
-    setHTML(app, html`<div class="state"><h3>المنيو فارغ حالياً</h3><p>لا توجد أصناف متاحة الآن. يرجى سؤال الكاشير.</p></div>`);
+    setHTML(app, html`<div class="state" style="grid-column:1/-1"><h3>المنيو فارغ حالياً</h3><p>لا توجد أصناف الآن. يرجى سؤال الكاشير.</p></div>`);
     setHTML($('#chips'), '');
     return;
   }
+  if (state.filter !== 'all' && !cats.some((c) => String(c.id) === String(state.filter))) state.filter = 'all';
+  renderChips(cats);
 
-  setHTML($('#chips'), html`${cats.map((c, i) =>
-    html`<button class="chip ${i === 0 ? 'on' : ''}" data-cat="${c.id}" type="button">${c.name}</button>`)}`);
-
-  const offers = state.offers.length ? html`<section class="offers" aria-label="العروض">
-    ${state.offers.map((o) => html`<div class="offer"><b>${o.title}</b>
-      <small>${o.discount_type === 'percent' ? `خصم ${Number(o.discount_value)}%` : `خصم ${money(o.discount_value)}`}
-      ${o.description ? ` — ${o.description}` : ''}</small></div>`)}
-  </section>` : '';
-
-  setHTML(app, html`${offers}${cats.map((c) => html`
-    <section class="cat-section" id="cat-${c.id}">
-      <h2>${c.name}</h2>
-      <div class="items">${byCat.get(c.id).sort((a, b) => a.sort - b.sort || a.id - b.id).map(itemTpl)}</div>
-    </section>`)}`);
-
-  setupChipSpy();
+  if (state.filter === 'all') {
+    setHTML(app, html`${cats.map((c) => html`<h3 class="cat-title">${c.name}</h3>${sortItems(byCat.get(c.id)).map(productTpl)}`)}`);
+  } else {
+    setHTML(app, html`${sortItems(byCat.get(Number(state.filter))).map(productTpl)}`);
+  }
 }
 
-function setupChipSpy() {
-  const chips = $$('.chip');
-  chips.forEach((ch) => ch.addEventListener('click', () => {
-    document.getElementById(`cat-${ch.dataset.cat}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }));
-  const obs = new IntersectionObserver((entries) => {
-    entries.forEach((e) => {
-      if (!e.isIntersecting) return;
-      const id = e.target.id.replace('cat-', '');
-      chips.forEach((c) => c.classList.toggle('on', c.dataset.cat === id));
-      chips.find((c) => c.dataset.cat === id)?.scrollIntoView({ inline: 'center', block: 'nearest' });
-    });
-  }, { rootMargin: '-140px 0px -60% 0px' });
-  $$('.cat-section').forEach((s) => obs.observe(s));
+// ---------- العروض والفعاليات ----------
+function offerLabel(o) {
+  if (o.discount_type === 'percent') return `خصم ${Number(o.discount_value)}%`;
+  if (o.discount_type === 'fixed') return `خصم ${money(o.discount_value)}`;
+  return '';
+}
+function whenLabel(e) {
+  if (e.starts_at && e.ends_at) return `${fmtDateTime(e.starts_at)} ← ${fmtDateTime(e.ends_at)}`;
+  if (e.starts_at) return `يبدأ ${fmtDateTime(e.starts_at)}`;
+  if (e.ends_at) return `حتى ${fmtDateTime(e.ends_at)}`;
+  return '';
+}
+function renderNews() {
+  const sep = '   •••   ';
+  $('#offers-marquee').textContent = state.offers.length
+    ? state.offers.map((o) => [o.title, offerLabel(o)].filter(Boolean).join(' — ')).join(sep)
+    : 'لا توجد عروض حالياً… تابعونا!';
+  $('#events-marquee').textContent = state.events.length
+    ? state.events.map((e) => e.title).join(sep)
+    : 'لا توجد فعاليات حالياً… ترقّبوا الجديد!';
+}
+function showOffers() {
+  openModal('🏷️ عروض Mr Black', state.offers.length ? html`${state.offers.map((o) => html`
+    <div class="news-item"><b>${o.title}</b>
+      ${offerLabel(o) ? html`<span class="badge badge-gold" style="margin-top:6px">${offerLabel(o)}</span>` : ''}
+      ${o.description ? html`<p>${o.description}</p>` : ''}
+      ${o.ends_at ? html`<div class="when num">ينتهي ${fmtDateTime(o.ends_at)}</div>` : ''}</div>`)}`
+    : html`<div class="state"><h3>لا توجد عروض حالياً</h3><p>تابعونا قريباً!</p></div>`);
+}
+function showEvents() {
+  openModal('🎉 الفعاليات', state.events.length ? html`${state.events.map((e) => html`
+    <div class="news-item"><b>${e.title}</b>
+      ${e.description ? html`<p>${e.description}</p>` : ''}
+      ${whenLabel(e) ? html`<div class="when num">🗓 ${whenLabel(e)}</div>` : ''}</div>`)}`
+    : html`<div class="state"><h3>لا توجد فعاليات حالياً</h3><p>ترقّبوا الجديد!</p></div>`);
 }
 
 function renderCartBar() {
   const n = cartCount();
   $('#cart-bar').classList.toggle('hidden', n === 0);
   $('#cart-count').textContent = n;
+  $('#cart-count-top').textContent = n;
   $('#cart-total').textContent = n ? `≈ ${money(estimateTotal())}` : '';
 }
 
@@ -208,18 +235,19 @@ function renderCartBody() {
   const linesBox = cartModal.body.querySelector('[data-lines]');
   if (!state.cart.length) {
     setHTML(cartModal.body, html`<div class="state"><h3>السلة فارغة</h3><p>أضف أصنافاً من المنيو.</p>
-      <button class="btn btn-gold" data-close>العودة للمنيو</button></div>`);
+      <button class="btn btn-gold" data-close type="button">العودة للمنيو</button></div>`);
     return;
   }
+  if (!linesBox) return;
   setHTML(linesBox, html`${state.cart.map((l) => {
     const it = state.items.get(l.item_id);
     return html`<div class="cart-line" data-key="${l.key}">
       <div class="cart-line-top">
         <div><b>${it?.name ?? 'صنف'}</b><div class="muted num" style="font-size:13px">${it ? money(unitPrice(it)) : ''}</div></div>
         <div class="stepper">
-          <button class="btn" data-line-dec aria-label="إنقاص">−</button>
+          <button class="btn" data-line-dec type="button" aria-label="إنقاص">−</button>
           <span class="qty num">${l.qty}</span>
-          <button class="btn btn-gold" data-line-inc aria-label="زيادة">+</button>
+          <button class="btn btn-gold" data-line-inc type="button" aria-label="زيادة">+</button>
         </div>
       </div>
       <input class="input" data-note maxlength="${MAX_NOTE}" placeholder="ملاحظة (اختياري): مثلاً بدون سكر" value="${l.note}">
@@ -228,11 +256,13 @@ function renderCartBody() {
 }
 
 function openCart() {
-  cartModal = openModal('سلتك', html`
+  if (TABLE === null) { toast('امسح رمز QR الموجود على طاولتك للطلب.', 'error'); return; }
+  if (!cartCount()) { toast('السلة فارغة. أضف أصنافاً من المنيو.'); return; }
+  cartModal = openModal('🛒 سلتك', html`
     <div data-lines></div>
     <div data-totals></div>
     <p class="form-error" data-err style="margin-top:10px"></p>
-    <button class="btn btn-gold" data-send style="width:100%;margin-top:6px;min-height:50px">إرسال الطلب — طاولة ${TABLE}</button>
+    <button class="btn btn-gold" data-send type="button" style="width:100%;margin-top:6px;min-height:50px">إرسال الطلب — طاولة ${TABLE}</button>
     <p class="muted" style="font-size:12px;text-align:center;margin-top:8px">السعر النهائي يُحسب من النظام عند الإرسال.</p>`);
   const m = cartModal;
   renderCartBody();
@@ -251,7 +281,7 @@ function openCart() {
         if (line.qty <= 0) state.cart = state.cart.filter((x) => x !== line);
       } else return;
       saveCart();
-      updateStepper(line.item_id);
+      updateButton(line.item_id);
       renderCartBody();
       refreshQuoteSoon();
     }
@@ -276,11 +306,12 @@ async function sendOrder(btn) {
     await withBusy(btn, async () => {
       const { data, error } = await sb.rpc('place_order', { p_table: TABLE, p_items: payloadItems() });
       if (error) { errBox.textContent = errMsg(error); return; }
+      const ids = new Set(state.cart.map((l) => l.item_id));
       state.cart = [];
       saveCart();
       storeInvoice(data);
       cartModal?.close();
-      $$('[data-stepper]').forEach((el) => updateStepper(Number(el.dataset.stepper)));
+      ids.forEach(updateButton);
       showInvoice(data, true);
     });
   } finally {
@@ -317,17 +348,16 @@ function invoiceTpl(inv, fresh) {
 }
 
 function showInvoice(inv, fresh = false) {
-  const m = openModal(fresh ? 'الفاتورة' : `فاتورة #${inv.order_id}`, html`
+  openModal(fresh ? 'الفاتورة' : `فاتورة #${inv.order_id}`, html`
     ${invoiceTpl(inv, fresh)}
-    <button class="btn btn-gold" data-close style="width:100%;margin-top:12px">${fresh ? 'متابعة التصفح' : 'إغلاق'}</button>`);
-  return m;
+    <button class="btn btn-gold" data-close type="button" style="width:100%;margin-top:12px">${fresh ? 'متابعة التصفح' : 'إغلاق'}</button>`);
 }
 
 function showInvoicesList() {
   const list = getInvoices();
   if (!list.length) return;
   const m = openModal('فواتيري', html`${list.map((inv, i) => html`
-    <button class="btn" data-i="${i}" style="width:100%;justify-content:space-between;margin-bottom:8px">
+    <button class="btn" data-i="${i}" type="button" style="width:100%;justify-content:space-between;margin-bottom:8px">
       <span>فاتورة #${inv.order_id}</span><span class="num">${money(inv.total)}</span></button>`)}`);
   m.body.addEventListener('click', (e) => {
     const b = e.target.closest('[data-i]');
@@ -336,74 +366,102 @@ function showInvoicesList() {
 }
 
 // ---------- التشغيل ----------
+function fillCafeInfo(ctx) {
+  setCurrency(ctx.currency);
+  document.title = `${ctx.cafe_name} — المنيو`;
+  if (ctx.tagline) $('#tagline').textContent = ctx.tagline;
+  $('#f-address').textContent = ctx.address ? `📍 ${ctx.address}` : '';
+  $('#f-phone').textContent = ctx.phone ? `📞 ${ctx.phone}` : '';
+  $('#f-hours').textContent = ctx.opening_hours ? `🕘 ${ctx.opening_hours}` : '';
+}
+
 async function load() {
-  if (TABLE === null) {
-    setHTML(app, html`<div class="state">
-      <h3>أهلاً بك في Mr Black</h3>
-      <p>للطلب: امسح رمز QR الموجود على طاولتك.</p>
-      <div style="display:flex;flex-direction:column;gap:10px;max-width:300px;margin:26px auto 0">
-        <p class="muted" style="font-size:13px">للموظفين:</p>
-        <a class="btn btn-gold" href="casher.html">لوحة الكاشير والإدارة</a>
-        <a class="btn" href="kitchen.html">شاشة المطبخ</a>
-      </div></div>`);
-    return;
-  }
-  setHTML(app, html`<div class="items">${raw('<div class="skeleton" style="height:92px"></div>'.repeat(6))}</div>`);
+  setHTML(app, html`${raw('<div class="skeleton" style="height:230px"></div>'.repeat(8))}`);
+  $('#denied').classList.add('hidden');
 
   try {
-    const [ctxRes, catRes, itemRes, offRes] = await Promise.all([
-      sb.rpc('menu_context', { p_table: TABLE }),
-      sb.from('categories').select('id, name, sort').order('sort').order('id'),
-      sb.from('menu_items').select('id, category_id, name, description, price, image_url, sort'),
-      sb.from('offers').select('id, title, description, discount_type, discount_value, item_id, category_id, ends_at'),
-    ]);
-    for (const r of [ctxRes, catRes, itemRes, offRes]) if (r.error) throw r.error;
-
+    const ctxRes = await sb.rpc('menu_context', { p_table: TABLE ?? 0 });
+    if (ctxRes.error) throw ctxRes.error;
     state.ctx = ctxRes.data;
-    setCurrency(state.ctx.currency);
-    $('#cafe-name').textContent = state.ctx.cafe_name;
-    document.title = `${state.ctx.cafe_name} — المنيو`;
+    fillCafeInfo(state.ctx);
 
-    if (!state.ctx.network_ok) {
-      setHTML(app, html`<div class="state"><h3>اتصل بشبكة واي فاي الكافيه</h3>
-        <p>المنيو والطلب متاحان فقط من داخل ${state.ctx.cafe_name}.<br>اتصل بشبكة الواي فاي (وأوقف بيانات الجوال إن لزم) ثم أعد المحاولة.</p>
-        <button class="btn btn-gold" data-retry>إعادة المحاولة</button></div>`);
-      return;
-    }
-    if (!state.ctx.table_valid) {
-      setHTML(app, html`<div class="state"><h3>رقم الطاولة غير صالح</h3>
-        <p>امسح رمز QR الموجود على طاولتك مرة أخرى، أو اطلب المساعدة من الكاشير.</p></div>`);
-      return;
-    }
-    $('#table-label').textContent = `طاولة رقم ${TABLE}`;
+    if (!state.ctx.network_ok) { $('#denied').classList.remove('hidden'); return; }
+
+    const [catRes, itemRes, offRes, evRes] = await Promise.all([
+      sb.from('categories').select('id, name, sort').order('sort').order('id'),
+      sb.from('menu_items').select('id, category_id, name, name_en, description, price, image_url, sort, sold_out'),
+      sb.from('offers').select('id, title, description, discount_type, discount_value, item_id, category_id, ends_at'),
+      sb.from('events').select('id, title, description, starts_at, ends_at').order('starts_at', { ascending: true, nullsFirst: true }),
+    ]);
+    for (const r of [catRes, itemRes, offRes, evRes]) if (r.error) throw r.error;
 
     state.categories = catRes.data;
     state.items = new Map(itemRes.data.map((i) => [i.id, i]));
     state.offers = offRes.data;
+    state.events = evRes.data;
+    renderNews();
+
+    if (TABLE !== null && !state.ctx.table_valid) {
+      toast('رقم الطاولة غير صالح. امسح رمز QR الموجود على طاولتك مرة أخرى.', 'error', 7000);
+    }
+    if (TABLE !== null && state.ctx.table_valid) {
+      const pill = $('#table-label');
+      pill.textContent = `طاولة ${TABLE}`;
+      pill.classList.remove('hidden');
+    }
 
     loadCart();
     const before = state.cart.length;
-    state.cart = state.cart.filter((l) => state.items.has(l.item_id));
-    if (state.cart.length < before) toast('تمت إزالة أصناف لم تعد متوفرة من سلتك.');
+    state.cart = state.cart.filter((l) => state.items.has(l.item_id) && !state.items.get(l.item_id).sold_out);
+    if (state.cart.length < before) toast('تمت إزالة أصناف نفدت من سلتك.', 'error');
     saveCart();
     if (getInvoices().length) $('#my-orders-btn').classList.remove('hidden');
 
     renderMenu();
+    if (TABLE === null) renderStaffLinks();
   } catch (e) {
-    setHTML(app, html`<div class="state"><h3>تعذّر تحميل المنيو</h3><p>${errMsg(e)}</p>
-      <button class="btn btn-gold" data-retry>إعادة المحاولة</button></div>`);
+    setHTML(app, html`<div class="state" style="grid-column:1/-1"><h3>تعذّر تحميل المنيو</h3><p>${errMsg(e)}</p>
+      <button class="btn btn-gold" data-retry type="button">إعادة المحاولة</button></div>`);
   }
+}
+
+/** بدون رقم طاولة: المنيو للتصفح فقط + روابط الموظفين */
+function renderStaffLinks() {
+  const box = document.createElement('div');
+  box.className = 'state';
+  box.style.gridColumn = '1/-1';
+  setHTML(box, html`
+    <p style="margin-bottom:14px">للطلب: امسح رمز QR الموجود على طاولتك.</p>
+    <div class="row" style="justify-content:center">
+      <a class="btn btn-gold" href="casher.html">لوحة الكاشير والإدارة</a>
+      <a class="btn" href="kitchen.html">شاشة المطبخ</a>
+    </div>`);
+  app.prepend(box);
 }
 
 app.addEventListener('click', (e) => {
   const add = e.target.closest('[data-add]');
-  if (add) { addItem(Number(add.dataset.add)); return; }
+  if (add) {
+    if (TABLE === null) { toast('امسح رمز QR الموجود على طاولتك للطلب.', 'error'); return; }
+    addItem(Number(add.dataset.add)); return;
+  }
   const dec = e.target.closest('[data-dec]');
   if (dec) { removeOne(Number(dec.dataset.dec)); return; }
   if (e.target.closest('[data-retry]')) load();
 });
+$('#chips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cat]');
+  if (!b) return;
+  state.filter = b.dataset.cat;
+  renderMenu();
+  if (TABLE === null) renderStaffLinks();
+});
 $('#cart-btn').addEventListener('click', openCart);
+$('#cart-btn-top').addEventListener('click', openCart);
 $('#my-orders-btn').addEventListener('click', showInvoicesList);
+$('#offers-box').addEventListener('click', showOffers);
+$('#events-box').addEventListener('click', showEvents);
+$('#denied-retry').addEventListener('click', load);
 window.addEventListener('online', () => toast('عاد الاتصال بالإنترنت.', 'success'));
 window.addEventListener('offline', () => toast('انقطع الاتصال بالإنترنت.', 'error'));
 

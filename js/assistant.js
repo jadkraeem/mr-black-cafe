@@ -86,7 +86,7 @@ export function mountAssistant(profile) {
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw Object.assign(new Error(body.error || ''), { status: res.status });
         pending.textContent = body.reply || '…';
-        history.push({ role: 'assistant', content: String(body.reply || '').slice(0, 4000) });
+        history.push({ role: 'assistant', content: String(body.reply || '').slice(0, 2000) });
       } catch (err) {
         history.pop();
         pending.remove();

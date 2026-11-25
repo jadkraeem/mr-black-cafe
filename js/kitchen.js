@@ -70,7 +70,7 @@ function tick() {
 function renderShell(profile) {
   setHTML(root, html`
     <header class="topbar"><div class="topbar-in">
-      <span class="brand">Mr Black</span><b>المطبخ</b>
+      <span class="brand">Mr Black<small>COFFEE & LOUNGE</small></span><b>المطبخ</b>
       <span class="conn" id="conn" title="الاتصال اللحظي"></span>
       <span class="spacer"></span>
       <button class="btn btn-sm" id="sound-btn" type="button">🔔 تفعيل الصوت</button>
@@ -109,7 +109,7 @@ function renderShell(profile) {
 staffGate({
   root,
   allowed: ['kitchen', 'manager', 'cashier'],
-  title: 'شاشة المطبخ — سجّل الدخول',
+  title: '👨‍🍳 دخول المطبخ',
   onReady: async (profile) => {
     renderShell(profile);
     const { data: s } = await sb.from('settings').select('late_minutes').maybeSingle();

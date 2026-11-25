@@ -276,14 +276,14 @@ function renderLogin(root, title) {
   setHTML(root, html`
     <div class="login-screen">
       <form class="login-box card" novalidate>
-        <span class="brand">Mr Black</span>
-        <p class="sub">${title}</p>
-        <div class="field"><label for="lg-email">البريد الإلكتروني</label>
-          <input class="input" id="lg-email" name="email" type="email" autocomplete="username" required dir="ltr"></div>
-        <div class="field"><label for="lg-pass">كلمة المرور</label>
-          <input class="input" id="lg-pass" name="password" type="password" autocomplete="current-password" required dir="ltr"></div>
+        <span class="brand">Mr Black<small>COFFEE & LOUNGE</small></span>
+        <h2>${title}</h2>
+        <div class="field"><label class="sr-only" for="lg-email">البريد الإلكتروني</label>
+          <input class="input" id="lg-email" name="email" type="email" autocomplete="username" required placeholder="البريد الإلكتروني"></div>
+        <div class="field"><label class="sr-only" for="lg-pass">كلمة المرور</label>
+          <input class="input" id="lg-pass" name="password" type="password" autocomplete="current-password" required placeholder="كلمة المرور"></div>
         <p class="form-error" role="alert"></p>
-        <button class="btn btn-gold" style="width:100%" type="submit">تسجيل الدخول</button>
+        <button class="btn btn-gold" style="width:100%;min-height:46px;font-size:16px" type="submit">دخول</button>
       </form>
     </div>`);
   const form = root.querySelector('form');
@@ -304,7 +304,7 @@ function renderLogin(root, title) {
 function renderBlocked(root, title, message, extra = '') {
   setHTML(root, html`
     <div class="login-screen"><div class="login-box card state">
-      <span class="brand">Mr Black</span>
+      <span class="brand">Mr Black<small>COFFEE & LOUNGE</small></span>
       <h3 style="margin-top:14px">${title}</h3>
       <p>${message}</p>
       ${raw(extra)}

@@ -16,6 +16,16 @@ export function mount(el, ctx) {
       <form class="card" style="max-width:560px" novalidate>
         <div class="field"><label for="st-name">اسم الكافيه</label>
           <input class="input" id="st-name" name="cafe_name" maxlength="60" required value="${s.cafe_name}"></div>
+        <div class="field"><label for="st-tag">العبارة في غلاف المنيو</label>
+          <input class="input" id="st-tag" name="tagline" maxlength="120" value="${s.tagline ?? ''}"></div>
+        <div class="field"><label for="st-addr">العنوان (يظهر أسفل المنيو)</label>
+          <input class="input" id="st-addr" name="address" maxlength="150" value="${s.address ?? ''}"></div>
+        <div class="grid-2">
+          <div class="field"><label for="st-phone">رقم الهاتف</label>
+            <input class="input" id="st-phone" name="phone" maxlength="40" dir="ltr" value="${s.phone ?? ''}"></div>
+          <div class="field"><label for="st-hours">أوقات الدوام</label>
+            <input class="input" id="st-hours" name="opening_hours" maxlength="80" placeholder="يومياً 8 صباحاً – 12 ليلاً" value="${s.opening_hours ?? ''}"></div>
+        </div>
         <div class="field"><label for="st-cur">رمز العملة</label>
           <input class="input" id="st-cur" name="currency" maxlength="10" required value="${s.currency}"></div>
         <div class="grid-2">
@@ -42,6 +52,10 @@ export function mount(el, ctx) {
         service_percent: Number(d.service_percent || 0),
         tax_percent: Number(d.tax_percent || 0),
         late_minutes: Number(d.late_minutes),
+        tagline: (d.tagline || '').trim() || 'أكثر من مجرد قهوة..',
+        address: (d.address || '').trim() || null,
+        phone: (d.phone || '').trim() || null,
+        opening_hours: (d.opening_hours || '').trim() || null,
       };
       if (!row.cafe_name || !row.currency) { err.textContent = 'اسم الكافيه والعملة مطلوبان.'; return; }
       if ([row.service_percent, row.tax_percent].some((v) => !(v >= 0 && v <= 100))) { err.textContent = 'النسب بين 0 و 100.'; return; }

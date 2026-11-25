@@ -44,7 +44,7 @@ export function mount(el, ctx) {
             <span>${c.name}</span><span class="muted num" style="font-size:12px">(${items.filter((i) => i.category_id === c.id).length})</span>
             <button class="btn btn-sm btn-ghost" data-edit-cat type="button" aria-label="تعديل">✎</button>
           </span>`)}</div>` : emptyTpl('لا توجد أقسام', 'ابدأ بإضافة قسم مثل "قهوة ساخنة".')}
-      </div>` : html`<p class="muted" style="margin-bottom:12px">يمكنك إيقاف صنف مؤقتاً عند نفاده؛ يختفي فوراً من منيو الزبائن.</p>`}
+      </div>` : html`<p class="muted" style="margin-bottom:12px">عند إيقاف صنف يبقى ظاهراً في منيو الزبائن مكتوباً عليه "نفد حالياً" ولا يمكن طلبه.</p>`}
 
       <div class="filters">
         <input class="input" type="search" placeholder="بحث عن صنف…" value="${search}" data-search style="max-width:240px">
@@ -57,7 +57,7 @@ export function mount(el, ctx) {
       ${shown.length ? html`<div class="table-wrap"><table class="data">
         <thead><tr><th>الصنف</th><th>القسم</th><th>السعر</th><th>المخزون</th><th>متوفر</th>${M ? html`<th></th>` : ''}</tr></thead>
         <tbody>${shown.map((it) => html`<tr data-item-id="${it.id}">
-          <td class="wrap"><b>${it.name}</b>${it.description ? html`<div class="muted" style="font-size:12px">${it.description}</div>` : ''}</td>
+          <td class="wrap"><b>${it.name}</b>${it.name_en ? html` <span class="muted" dir="ltr" style="font-size:12px">${it.name_en}</span>` : ''}${it.sold_out ? html` <span class="badge badge-danger">نفد</span>` : ''}${it.description ? html`<div class="muted" style="font-size:12px">${it.description}</div>` : ''}</td>
           <td>${catName(it.category_id)}</td>
           <td class="num">${money(it.price)}</td>
           <td class="num">${it.track_stock
@@ -114,6 +114,8 @@ export function mount(el, ctx) {
       <form novalidate>
         <div class="field"><label for="i-name">اسم الصنف</label>
           <input class="input" id="i-name" name="name" maxlength="80" required value="${it?.name ?? ''}"></div>
+        <div class="field"><label for="i-en">الاسم بالإنكليزي (اختياري، يظهر تحت الاسم)</label>
+          <input class="input" id="i-en" name="name_en" maxlength="80" dir="ltr" value="${it?.name_en ?? ''}"></div>
         <div class="grid-2">
           <div class="field"><label for="i-cat">القسم</label>
             <select class="input" id="i-cat" name="category_id">${cats.map((c) =>
@@ -131,7 +133,7 @@ export function mount(el, ctx) {
           <div class="field"><label for="i-low">تنبيه المخزون المنخفض عند</label>
             <input class="input" id="i-low" name="low_stock_threshold" type="number" min="0" step="1" value="${it?.low_stock_threshold ?? 5}"></div>
         </div>
-        <label class="check" style="margin-bottom:8px"><input type="checkbox" name="available" ${it?.available === false ? '' : html`checked`}> متوفر للطلب</label><br>
+        <label class="check" style="margin-bottom:8px"><input type="checkbox" name="available" ${it?.available === false ? '' : html`checked`}> متوفر للطلب (إذا أُلغي التحديد يظهر "نفد حالياً")</label><br>
         <label class="check" style="margin-bottom:8px"><input type="checkbox" name="track_stock" data-track ${it?.track_stock ? html`checked` : ''}> تتبّع المخزون لهذا الصنف</label>
         ${!it ? html`<div class="field hidden" data-initial><label for="i-qty">الكمية الافتتاحية</label>
           <input class="input" id="i-qty" name="initial_qty" type="number" min="0" step="1" value="0"></div>` : ''}
@@ -149,6 +151,7 @@ export function mount(el, ctx) {
       const f = formData(form);
       const row = {
         name: (f.name || '').trim(),
+        name_en: (f.name_en || '').trim() || null,
         category_id: intOr(f.category_id),
         price: intOr(f.price),
         description: (f.description || '').trim() || null,
@@ -212,8 +215,9 @@ export function mount(el, ctx) {
       e.target.disabled = false;
       if (error) { e.target.checked = !val; toastError(error); return; }
       const it = items.find((x) => x.id === id);
-      if (it) it.available = val;
-      toast(val ? `"${it?.name}" متوفر الآن` : `تم إيقاف "${it?.name}" مؤقتاً`, 'success');
+      if (it) { it.available = val; it.sold_out = !val || (it.track_stock && it.stock_qty <= 0); }
+      toast(val ? `"${it?.name}" متوفر الآن` : `"${it?.name}" يظهر الآن للزبائن: نفد حالياً`, 'success');
+      render();
     }
   });
 
