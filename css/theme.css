@@ -54,7 +54,7 @@ h1, h2, h3 { font-family: var(--font-head); font-weight: 700; line-height: 1.3; 
   padding: 10px 16px; border-radius: var(--r-sm); border: 1px solid var(--line);
   background: var(--card-2); cursor: pointer; font-weight: 700; font-size: 14px;
   transition: background .15s, border-color .15s, opacity .15s; white-space: nowrap;
-  min-height: 42px;
+  min-height: 42px; text-decoration: none; color: var(--text);
 }
 .btn:hover { border-color: #3a3a3d; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
