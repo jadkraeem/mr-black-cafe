@@ -1,0 +1,21 @@
+# Mr Black — مساعد الذكاء الاصطناعي
+# لا يوجد هنا أي سر: رابط Supabase والمفتاح "publishable" علنيان بطبيعتهما.
+name = "mr-black-assistant"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[ai]
+binding = "AI"
+
+[vars]
+ALLOWED_ORIGIN = "https://jadkraeem.github.io"
+SUPABASE_URL = "https://wsgpvqwapdpmpqsdjbks.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_NRLTHP1jIdH_DYL7-jtOCw_XXe8s4Tf"
+AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+
+# حد الطلبات: 15 سؤالاً في الدقيقة لكل موظف
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "7001"
+simple = { limit = 15, period = 60 }

@@ -1,0 +1,20 @@
+# معاينات التصميم المؤقتة
+_previews/
+
+# أسرار — لا تُرفع أبداً
+.env
+.env.*
+.dev.vars
+*.pem
+*.key
+
+# أدوات
+node_modules/
+.wrangler/
+worker/.wrangler/
+supabase/.temp/
+.DS_Store
+Thumbs.db
+.vscode/
+.claude/
+.mcp.json
