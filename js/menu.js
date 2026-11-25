@@ -358,6 +358,12 @@ async function load() {
     $('#cafe-name').textContent = state.ctx.cafe_name;
     document.title = `${state.ctx.cafe_name} — المنيو`;
 
+    if (!state.ctx.network_ok) {
+      setHTML(app, html`<div class="state"><h3>اتصل بشبكة واي فاي الكافيه</h3>
+        <p>المنيو والطلب متاحان فقط من داخل ${state.ctx.cafe_name}.<br>اتصل بشبكة الواي فاي (وأوقف بيانات الجوال إن لزم) ثم أعد المحاولة.</p>
+        <button class="btn btn-gold" data-retry>إعادة المحاولة</button></div>`);
+      return;
+    }
     if (!state.ctx.table_valid) {
       setHTML(app, html`<div class="state"><h3>رقم الطاولة غير صالح</h3>
         <p>امسح رمز QR الموجود على طاولتك مرة أخرى، أو اطلب المساعدة من الكاشير.</p></div>`);

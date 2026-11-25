@@ -16,6 +16,7 @@ import * as reportsTab from './reports.js';
 import * as stocktakeTab from './stocktake.js';
 import * as staffTab from './staff.js';
 import * as settingsTab from './settings.js';
+import * as wifiTab from './wifi.js';
 
 const TABS = [
   { key: 'orders', label: 'الطلبات', mod: ordersTab, roles: ['manager', 'cashier'] },
@@ -25,6 +26,7 @@ const TABS = [
   { key: 'offers', label: 'العروض', mod: offersTab, roles: ['manager'] },
   { key: 'reports', label: 'التقارير', mod: reportsTab, roles: ['manager'] },
   { key: 'stocktake', label: 'الجرد', mod: stocktakeTab, roles: ['manager'] },
+  { key: 'wifi', label: 'الشبكة', mod: wifiTab, roles: ['manager', 'cashier'] },
   { key: 'staff', label: 'الموظفون', mod: staffTab, roles: ['manager'] },
   { key: 'settings', label: 'الإعدادات', mod: settingsTab, roles: ['manager'] },
 ];
