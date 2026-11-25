@@ -3,13 +3,16 @@
 نظام كامل لكافيه **Mr Black**: منيو للزبائن عبر QR، ولوحة كاشير وإدارة، وشاشة مطبخ، ومساعد ذكاء اصطناعي للموظفين.
 الواجهة عربية بالكامل (RTL)، وتعمل على الجوال والتابلت والكمبيوتر.
 
+## 🔗 الروابط المباشرة
+
 | الصفحة | الرابط | لمن؟ |
 |---|---|---|
-| منيو الزبون | `index.html?table=رقم` | الزبائن (بدون تسجيل دخول) |
-| الكاشير والإدارة | `casher.html` | المدير والكاشير |
-| شاشة المطبخ | `kitchen.html` | المطبخ (والمدير والكاشير) |
+| 🧾 **الكاشير والإدارة** | [jadkraeem.github.io/mr-black-cafe/casher.html](https://jadkraeem.github.io/mr-black-cafe/casher.html) | المدير والكاشير |
+| 👨‍🍳 **شاشة المطبخ** | [jadkraeem.github.io/mr-black-cafe/kitchen.html](https://jadkraeem.github.io/mr-black-cafe/kitchen.html) | المطبخ |
+| ☕ **منيو الزبون** (طاولة 1 مثالاً) | [jadkraeem.github.io/mr-black-cafe/index.html?table=1](https://jadkraeem.github.io/mr-black-cafe/index.html?table=1) | الزبائن — عادةً عبر QR |
+| 🏠 الصفحة الرئيسية | [jadkraeem.github.io/mr-black-cafe](https://jadkraeem.github.io/mr-black-cafe/) | فيها أزرار للكاشير والمطبخ |
 
-الموقع: <https://jadkraeem.github.io/mr-black-cafe/>
+> نصيحة: احفظ رابط الكاشير ورابط المطبخ في "المفضلة" أو "أضف إلى الشاشة الرئيسية" على الجهاز.
 
 ---
 

@@ -338,8 +338,14 @@ function showInvoicesList() {
 // ---------- التشغيل ----------
 async function load() {
   if (TABLE === null) {
-    setHTML(app, html`<div class="state"><h3>لم يتم تحديد الطاولة</h3>
-      <p>امسح رمز QR الموجود على طاولتك لفتح المنيو.</p></div>`);
+    setHTML(app, html`<div class="state">
+      <h3>أهلاً بك في Mr Black</h3>
+      <p>للطلب: امسح رمز QR الموجود على طاولتك.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;max-width:300px;margin:26px auto 0">
+        <p class="muted" style="font-size:13px">للموظفين:</p>
+        <a class="btn btn-gold" href="casher.html">لوحة الكاشير والإدارة</a>
+        <a class="btn" href="kitchen.html">شاشة المطبخ</a>
+      </div></div>`);
     return;
   }
   setHTML(app, html`<div class="items">${raw('<div class="skeleton" style="height:92px"></div>'.repeat(6))}</div>`);
