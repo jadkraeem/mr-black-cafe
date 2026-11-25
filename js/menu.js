@@ -74,7 +74,7 @@ function addItem(id) {
   if (line) line.qty += 1; else state.cart.push({ key: newKey(), item_id: id, qty: 1, note: '' });
   saveCart();
   updateButton(id);
-  if (qtyOfItem(id) === 1) toast(`تمت إضافة ${it.name} للسلة ✓`);
+  if (qtyOfItem(id) === 1) toast(`تمت إضافة ${it.name} للسلة ✓`, 'info', 1600);
 }
 function removeOne(id) {
   const lines = state.cart.filter((l) => l.item_id === id);

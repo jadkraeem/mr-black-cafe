@@ -139,6 +139,7 @@ export function toast(msg, type = 'info', ms = 3800) {
     box.setAttribute('aria-live', 'polite');
     document.body.appendChild(box);
   }
+  while (box.children.length >= 2) box.firstElementChild.remove();   // لا تتراكم الرسائل
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.textContent = msg;
